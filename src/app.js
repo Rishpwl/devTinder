@@ -1,17 +1,32 @@
 const express=require('express');
 const app=express();
 const connectDB=require('./config/database');
-
+const {validateSignupData}=require('./utils/validation')
 const User=require('./models/user');
+const bcrypt=require('bcrypt');
+const cookieParser=require('cookie-parser');
+
+const jwt=require('jsonwebtoken');
 
 
 require('./config/database');
 app.use(express.json());
+app.use(cookieParser())
 
 app.post('/signup',async(req,res)=>{
-    
-    const newuser= new User(req.body);
+
+
     try{
+        validateSignupData(req);
+
+        const {firstName,lastName,emailId,password}=req.body;
+
+        const hashedPassword=await bcrypt.hash(password,10);
+        
+    const newuser= new User({
+        firstName,lastName,emailId,
+        password:hashedPassword
+        });
         await newuser.save();
         //console.log(newuser)
         res.send("user created")
@@ -19,6 +34,53 @@ app.post('/signup',async(req,res)=>{
         console.log(err);
     }
   
+})
+
+app.post('/login',async(req,res)=>{
+    try{
+        const {emailId,password}=req.body;
+        const user=await User.findOne({emailId:emailId});
+        if(!user){
+            throw new Error("user is not registered with us");
+        }
+        const isPasswordValid=await bcrypt.compare(password,user.password);
+         if(isPasswordValid){
+            const token=await jwt.sign({_id:user._id},"DEV@Tinder");
+            console.log(token);
+
+            res.cookie("token",token);
+            res.send("login successful")
+         }else{
+            throw new Error("invalid credentials")
+         }
+    }catch(err){
+        console.log("error"+err)
+    }
+})
+
+app.get('/profile',async(req,res)=>{
+   try{
+    const cookies=req.cookies;
+    const {token}=cookies;
+    if(!token){
+        throw new Error("invalid token");
+    }
+
+    const decodedMessage=await jwt.verify(token,"DEV@Tinder")
+    const {_id}=decodedMessage;
+
+    console.log("Logged in user is : "+_id);
+    const user=await User.findById(_id);
+   if(!user){
+    throw new Error("no user found")
+   }
+
+    res.send(user)
+   }catch(err){
+    console.log("error"+err);
+   }
+
+   
 })
 
 app.get('/user',async(req,res)=>{
