@@ -7,7 +7,7 @@ const bcrypt=require('bcrypt');
 const cookieParser=require('cookie-parser');
 
 const jwt=require('jsonwebtoken');
-
+const {userAuth}=require('./middlewares/auth')
 
 require('./config/database');
 app.use(express.json());
@@ -45,10 +45,10 @@ app.post('/login',async(req,res)=>{
         }
         const isPasswordValid=await bcrypt.compare(password,user.password);
          if(isPasswordValid){
-            const token=await jwt.sign({_id:user._id},"DEV@Tinder");
+            const token=await jwt.sign({_id:user._id},"DEV@Tinder",{expiresIn:"7d"});
             console.log(token);
 
-            res.cookie("token",token);
+            res.cookie("token",token,{expires:new Date( Date.now()+ 8*3600000)});
             res.send("login successful")
          }else{
             throw new Error("invalid credentials")
@@ -58,22 +58,9 @@ app.post('/login',async(req,res)=>{
     }
 })
 
-app.get('/profile',async(req,res)=>{
+app.get('/profile',userAuth,async(req,res)=>{
    try{
-    const cookies=req.cookies;
-    const {token}=cookies;
-    if(!token){
-        throw new Error("invalid token");
-    }
-
-    const decodedMessage=await jwt.verify(token,"DEV@Tinder")
-    const {_id}=decodedMessage;
-
-    console.log("Logged in user is : "+_id);
-    const user=await User.findById(_id);
-   if(!user){
-    throw new Error("no user found")
-   }
+    const user=req.user;
 
     res.send(user)
    }catch(err){
@@ -82,7 +69,7 @@ app.get('/profile',async(req,res)=>{
 
    
 })
-
+/*
 app.get('/user',async(req,res)=>{
     const useremail=req.body.emailId;
     try{
@@ -147,6 +134,8 @@ app.patch('/user',async(req,res)=>{
         console.log(err);
     }
 })
+*/
+
 
 
 connectDB().then(()=>{
