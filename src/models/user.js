@@ -43,6 +43,16 @@ const userSchema=new mongoose.Schema({
             }
         }
     },
+    isPremium:{
+        type:Boolean,
+        default:false,
+    },
+    membershipType:{
+        type:String,
+        
+    },
+
+   
     photoUrl:{
         type:String,
         default:"https://tse4.mm.bing.net/th?id=OIP.ed0RqUUqkqGszO7DikXhagAAAA&pid=Api&P=0&h=180"
@@ -59,6 +69,15 @@ const userSchema=new mongoose.Schema({
     timestamps:true
 }
 )
+
+userSchema.methods.getJWT = function () {
+    return jwt.sign(
+      { _id: this._id, emailId: this.emailId },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+  };
+  
 
 const User=mongoose.model("User",userSchema);
 module.exports=User;
